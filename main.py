@@ -10,29 +10,48 @@ SIZE = WIDTH, HEIGHT
 # Load images
 player_img_1 = pygame.transform.scale(pygame.image.load(os.path.join("images", "fly-1.png")), (70, 70))
 player_img_2 = pygame.transform.scale(pygame.image.load(os.path.join("images", "fly-2.png")), (70, 70))
+
+t_rex_img_1 = pygame.transform.scale(pygame.image.load(os.path.join("images", "t-rex-1.png")), (100, 100))
+t_rex_img_2 = pygame.transform.scale(pygame.image.load(os.path.join("images", "t-rex-2.png")), (100, 100))
+
+
 road_img = pygame.transform.scale(pygame.image.load(os.path.join("images", "road.png")), (2*WIDTH, int(HEIGHT/2)))
 
-class Player:
+class Object:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.img = [player_img_1, player_img_2]
-        self.fly = True # flag for swap image to create animation effect
-        self.velocity = 5
+        self.img = []
+        self.animation = True # flag for swap image to create animation effect
+        self.velocity = 0
 
     def render(self, screen):
-        if self.fly:
+        if self.animation:
             screen.blit(self.img[0], (self.x, self.y))
-            self.fly = not self.fly
+            self.animation = not self.animation
         else:
             screen.blit(self.img[1], (self.x, self.y))
-            self.fly = not self.fly
+            self.animation = not self.animation
+
+class Player(Object):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.img = [player_img_1, player_img_2]
 
     def jump(self):
         self.y -= 10
     
     def drown(self):
         self.y += 3
+
+class Trex(Object):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.img = [t_rex_img_1, t_rex_img_2]
+        self.velocity = 5
+
+    def move(self):
+        self.x -= self.velocity
 
 class Road:
     def __init__(self, x, y):
@@ -55,6 +74,7 @@ def main():
     clock = pygame.time.Clock()
 
     player = Player(50, 360)
+    t_rexs = [Trex(WIDTH - t_rex_img_1.get_width() - 20, 340)]
     roads = [Road(0, 240)]
 
     # Initialize screen
@@ -82,6 +102,10 @@ def main():
         # render player
         player.render(screen)
 
+        # render t-rex
+        for t_rex in t_rexs:
+            t_rex.render(screen)
+
         # render infinity road
         for road in roads:
             road.render(screen)
@@ -95,11 +119,15 @@ def main():
 
         score += 0.2
 
+        for t_rex in t_rexs:
+            t_rex.move()
+            if t_rex.x < -10:
+                t_rex.x = WIDTH*random.randrange(1, 3)
+
         for road in roads:
             road.move()
             if road.x == -WIDTH:
                 roads.append(Road(WIDTH, 240))
-
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
