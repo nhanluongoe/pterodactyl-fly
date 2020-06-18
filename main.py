@@ -84,6 +84,7 @@ class Cloud(Object):
     def __init__(self, x, y, img):
         super().__init__(x, y)
         self.img = img
+        self.velocity = 1
 
     def render(self, screen):
         screen.blit(self.img, (self.x, self.y))
@@ -110,18 +111,13 @@ class Rocket(Object):
         screen.blit(self.img, (self.x, self.y))
 
 
-class Road:
+class Road(Object):
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        super().__init__(x, y)
         self.img = road_img
-        self.velocity = 5
 
     def render(self, screen):
         screen.blit(self.img, (self.x, self.y))
-
-    def move(self):
-        self.x -= self.velocity
 
 
 def collide(obj1, obj2):
@@ -132,15 +128,16 @@ def collide(obj1, obj2):
 
 def main():
     run = True
-    lost = False
-    end_game = False
-    lost_time = 0  # time interval between when player died to return to homepage
     fps = 120
     score = 0
+    lost = False
+    end_game = False
+    lost_time = 100  # time interval between when player died and return to homepage
+
     clock = pygame.time.Clock()
 
     player = Player(50, 360)
-    t_rexs = [Trex(WIDTH - t_rex_img_1.get_width() - 20, 340)]
+    t_rex = Trex(WIDTH - t_rex_img_1.get_width() - 20, 340)
     clouds = [
         Cloud(WIDTH - cloud_img_1.get_width() - 600, 20, cloud_img_1),
         Cloud(WIDTH - cloud_img_1.get_width() - 20, 40, cloud_img_2),
@@ -148,9 +145,7 @@ def main():
         Cloud(WIDTH - cloud_img_1.get_width() - 400, 120, cloud_img_1)
     ]
     roads = [Road(0, 240)]
-    rockets = [
-        Rocket(2*WIDTH, 40)
-    ]
+    rocket = Rocket(2*WIDTH, 40)
     trees = [
         Tree(WIDTH, 330, tree_img_1),
         Tree(WIDTH * 1.2, 330, tree_img_2),
@@ -174,41 +169,38 @@ def main():
     background.fill((250, 250, 250))
 
     def on_render():
-        # render background
+        # Render background
         screen.blit(background, (0, 0))
 
-        # render text label
+        # Render text label
         score_label = score_font.render(
             "Score: {}".format(math.floor(score)), 1, (0, 0, 0))
         screen.blit(score_label, (WIDTH - score_label.get_width() - 10, 10))
 
-        # render infinity road
+        # Render infinity road
         for road in roads:
             road.render(screen)
 
-        # render trees
+        # Render trees
         for tree in trees:
             tree.render(screen)
 
-        # render clouds
+        # Render clouds
         for cloud in clouds:
             cloud.render(screen)
 
-        # render t-rex
-        for t_rex in t_rexs:
-            t_rex.render(screen)
+        # Render t-rex
+        t_rex.render(screen)
 
-        # render rocket
-        for rocket in rockets:
-            rocket.render(screen)
+        # Render rocket
+        rocket.render(screen)
 
-        # render player
+        # Render player
         player.render(screen)
 
         if lost:
             lost_label = lost_font.render("Game Over!", 1, (0, 0, 0))
-            screen.blit(
-                lost_label, (WIDTH/2 - lost_label.get_width()/2, HEIGHT/2))
+            screen.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, HEIGHT/2))
 
         pygame.display.update()
 
@@ -219,51 +211,54 @@ def main():
 
         if end_game:
             lost = True
-            lost_time += 1
+            lost_time -= 1
         else:
             score += 0.2
 
-
         if lost:
-            if lost_time > fps:
+            if lost_time == 0:
                 run = False
             else:
                 continue
 
-        for t_rex in t_rexs:
-            t_rex.move()
-            if t_rex.x < -10:
-                t_rex.x = WIDTH*random.randrange(1, 3)
-                t_rex.velocity = random.randrange(7, 10)
-            if collide(player, t_rex):
-                end_game = True
+        # Handle T-Rex's animation
+        t_rex.move()
+        if t_rex.x < -100:
+            t_rex.x = WIDTH*random.randrange(1, 3)
+            t_rex.velocity = random.randrange(7, 10)
+        if collide(player, t_rex):
+            end_game = True
 
+        # Handle clouds' animation
         for cloud in clouds:
             cloud.move()
-            if cloud.x < - 10:
+            if cloud.x < - 100:
                 cloud.x = WIDTH*random.randrange(1, 5)
 
-        for rocket in rockets:
-            rocket.move()
-            if rocket.x < - 10:
-                rocket.x = WIDTH*random.randrange(1, 5)
-                rocket.y = random.randrange(20, 360)
-                rocket.velocity = random.randrange(6, 20)
-            if collide(player, rocket):
-                end_game = True
+        # Handle rockets' animation
+        rocket.move()
+        if rocket.x < - 100:
+            rocket.x = WIDTH*random.randrange(1, 5)
+            rocket.y = random.randrange(20, 360)
+            rocket.velocity = random.randrange(6, 20)
+        if collide(player, rocket):
+            end_game = True
 
+        # Handle trees' animation
         for tree in trees:
             tree.move()
-            if tree.x < -10:
+            if tree.x < -100:
                 tree.x = WIDTH * random.randrange(1, 3)
             if collide(player, tree):
                 end_game = True
 
+        # Handle road animation
         for road in roads:
             road.move()
             if road.x == -WIDTH:
                 roads.append(Road(WIDTH, 240))
 
+        # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -273,7 +268,7 @@ def main():
             player.y += 8
         if keys[pygame.K_SPACE] and player.y > 0:
             player.jump()
-        if (not keys[pygame.K_SPACE]) and (not keys[pygame.K_DOWN]) and player.y < 360:
+        if not (keys[pygame.K_SPACE] or keys[pygame.K_DOWN]) and player.y < 360:
             player.drown()
 
 
@@ -296,12 +291,14 @@ def home():
     # Event loop
     run = True
     while run:
+        # Render home screen with title
         screen.blit(background, (0, 0))
         title_label = title_font.render(
             "Press the space to begin...", 1, (0, 0, 0))
         screen.blit(title_label, (WIDTH/2 - title_label.get_width() /
                                   2, HEIGHT/2 - title_label.get_height()/2))
 
+        # Handle events
         pygame.display.update()
         keys = pygame.key.get_pressed()
         for event in pygame.event.get():
