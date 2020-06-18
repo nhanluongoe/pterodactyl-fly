@@ -24,10 +24,6 @@ tree_img_1 = pygame.transform.scale(pygame.image.load(os.path.join("images", "tr
 tree_img_2 = pygame.transform.scale(pygame.image.load(os.path.join("images", "tree-2.png")), (100, 100))
 tree_img_3 = pygame.transform.scale(pygame.image.load(os.path.join("images", "tree-3.png")), (100, 100))
 
-
-
-
-
 road_img = pygame.transform.scale(pygame.image.load(os.path.join("images", "road.png")), (2*WIDTH, int(HEIGHT/2)))
 
 class Object:
@@ -53,6 +49,7 @@ class Player(Object):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.img = [player_img_1, player_img_2]
+        self.mask = pygame.mask.from_surface(player_img_1)
 
     def jump(self):
         self.y -= 10
@@ -64,6 +61,7 @@ class Trex(Object):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.img = [t_rex_img_1, t_rex_img_2]
+        self.mask = pygame.mask.from_surface(t_rex_img_1)
         self.velocity = 7
 
 
@@ -75,15 +73,21 @@ class Cloud(Object):
     def render(self, screen):
         screen.blit(self.img, (self.x, self.y))
 
-class Tree(Cloud):
-    def __init(self, x, y):
+class Tree(Object):
+    def __init__(self, x, y, img):
         super().__init__(x, y)
+        self.img = img
+        self.mask = pygame.mask.from_surface(self.img)
+
+    def render(self, screen):
+        screen.blit(self.img, (self.x, self.y))
 
 
 class Rocket(Object):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.img = rocket_img
+        self.mask = pygame.mask.from_surface(self.img)
         self.velocity = 10
 
     def render(self, screen):
@@ -103,8 +107,17 @@ class Road:
         self.x -= self.velocity
 
 
+def collide(obj1, obj2):
+    offset_x = int(obj2.x - obj1.x)
+    offset_y = int(obj2.y - obj1.y)
+    return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
+
+
 def main():
     run = True
+    lost = False
+    end_game = False
+    lost_time = 0 # time interval between when player died to return to homepage
     fps = 120
     score = 0
     clock = pygame.time.Clock()
@@ -134,7 +147,8 @@ def main():
 
     # Initialize font
     pygame.font.init()
-    score_font = pygame.font.SysFont("pixel", 40)
+    score_font = pygame.font.Font(os.path.join("fonts", "pixel.ttf"), 30)
+    lost_font = pygame.font.Font(os.path.join("fonts", "pixel.ttf"), 60)
 
     # Fill background
     background = pygame.Surface(screen.get_size())
@@ -145,9 +159,10 @@ def main():
         # render background
         screen.blit(background, (0, 0))
 
-        # render label
+        # render text label
         score_label = score_font.render("Score: {}".format(math.floor(score)), 1, (0, 0, 0))
-        screen.blit(score_label, (WIDTH*2, 10))
+        screen.blit(score_label, (WIDTH - score_label.get_width() - 10, 10))
+
 
         # render infinity road
         for road in roads:
@@ -165,14 +180,17 @@ def main():
         for t_rex in t_rexs:
             t_rex.render(screen)
 
-        # render player
-        player.render(screen)
 
         # render rocket
         for rocket in rockets:
             rocket.render(screen)
+            
+        # render player
+        player.render(screen)
 
-        
+        if lost:
+            lost_label = lost_font.render("Game Over!", 1, (0, 0, 0))
+            screen.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, HEIGHT/2))
 
         pygame.display.update()
 
@@ -183,10 +201,23 @@ def main():
 
         score += 0.2
 
+        if end_game:
+            lost = True
+            lost_time += 1
+
+        if lost:
+            if lost_time > fps:
+                run = False
+            else:
+                continue
+
         for t_rex in t_rexs:
             t_rex.move()
             if t_rex.x < -10:
                 t_rex.x = WIDTH*random.randrange(1, 3)
+                t_rex.velocity = random.randrange(7, 10)
+            if collide(player, t_rex):
+                end_game = True
 
         for cloud in clouds:
             cloud.move()
@@ -198,12 +229,16 @@ def main():
             if rocket.x < - 10:
                 rocket.x = WIDTH*random.randrange(1, 5)
                 rocket.y = random.randrange(20, 360)
-                rocket.velocity = random.randrange(6, 15)
+                rocket.velocity = random.randrange(6, 20)
+            if collide(player, rocket):
+                end_game = True
 
         for tree in trees:
             tree.move()
             if tree.x < -10:
                 tree.x = WIDTH * random.randrange(1, 3)
+            if collide(player, tree):
+                end_game = True
 
         for road in roads:
             road.move()
@@ -223,5 +258,35 @@ def main():
         if (not keys[pygame.K_SPACE]) and (not keys[pygame.K_DOWN]) and player.y < 360:
             player.drown()    
 
+def home():
+    # Initialize font
+    pygame.font.init()
+    title_font = pygame.font.Font(os.path.join("fonts", "pixel.ttf"), 70)
+
+    # Initialize screen
+    pygame.init()
+    screen = pygame.display.set_mode(SIZE)
+    pygame.display.set_caption("Jumping T-Rex")
+
+    # Fill background
+    background = pygame.Surface(screen.get_size())
+    background = background.convert()
+    background.fill((250, 250, 250))
+
+    # Event loop
+    run = True
+    while run:
+        screen.blit(background, (0, 0))
+        title_label = title_font.render("Press the space to begin...", 1, (0, 0, 0))
+        screen.blit(title_label, (WIDTH/2 - title_label.get_width()/2, HEIGHT/2 - title_label.get_height()/2))
+
+        pygame.display.update()
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if keys[pygame.K_SPACE]:
+                main()
+
 if __name__ == '__main__':
-    main()
+    home()
