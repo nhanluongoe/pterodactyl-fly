@@ -160,7 +160,8 @@ def main():
     # Initialize screen
     pygame.init()
     screen = pygame.display.set_mode(SIZE)
-    pygame.display.set_caption("Jumping T-Rex")
+    pygame.display.set_caption("Pterodactyl Fly")
+    pygame.display.set_icon(player_img_1)
 
     # Initialize font
     pygame.font.init()
@@ -216,11 +217,12 @@ def main():
         clock.tick(fps)
         on_render()
 
-        score += 0.2
-
         if end_game:
             lost = True
             lost_time += 1
+        else:
+            score += 0.2
+
 
         if lost:
             if lost_time > fps:
@@ -283,7 +285,8 @@ def home():
     # Initialize screen
     pygame.init()
     screen = pygame.display.set_mode(SIZE)
-    pygame.display.set_caption("Jumping T-Rex")
+    pygame.display.set_caption("Pterodactyl Fly")
+    pygame.display.set_icon(player_img_1)
 
     # Fill background
     background = pygame.Surface(screen.get_size())
